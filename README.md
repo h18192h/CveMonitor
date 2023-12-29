@@ -18,6 +18,12 @@ CveMonitor每天定时监控CVE上新及更新情况
 
 下载到本地后安装所需要的依赖。
 
+```shell
+git clone https://github.com/h18192h/CveMonitor.git
+cd CveMonitor
+pip3 install -r requirements.txt
+```
+
 第124和125行，def BaiduTrans(cvecve)函数中配置好百度翻译appkey即可：
 
 ```python
