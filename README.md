@@ -1,6 +1,6 @@
 # CveMonitor
 CveMonitor每天定时监控CVE上新及更新情况
-网上已经有大量的脚本。这里我是直接引用大佬的脚本在上面造的轮子。原项目地址：[GitHub - JickLunlun/CveMonitoring: CVE漏洞监控推送脚本 (nuaa.cf)](https://hub.nuaa.cf/JickLunlun/CveMonitoring)
+网上已经有大量的脚本。这里我是直接引用大佬的脚本在上面造的轮子。原项目地址：[GitHub - JickLunlun/CveMonitoring: CVE漏洞监控推送脚本](https://github.com/JickLunlun/CveMonitoring)
 
 ## 增加功能
 
@@ -14,6 +14,10 @@ CveMonitor每天定时监控CVE上新及更新情况
 
 对接百度翻译API对漏洞描述进行翻译；（后期打算对接chatgpt进行翻译，让翻译更加适合中国宝宝的体制）
 
+新增aliyun漏洞库的爬取（CVE与非CVE）；
+
+并将爬取到的数据保存到数据库；（会直接在项目根目录生成一个Vuln.db的sqlite文件）
+
 后续还会增加数据库存储功能及其他各平台（seebug、CNVD、CNNVD、nessus）的漏洞爬取与去重以及微信公众号推送功能。
 
 ## 安装&&使用
@@ -26,7 +30,7 @@ cd CveMonitor
 pip3 install -r requirements.txt
 ```
 
-第124和125行，def BaiduTrans(cvecve)函数中配置好百度翻译appkey即可：
+第189和190行，def BaiduTrans(cvecve)函数中配置好百度翻译appkey即可：
 
 ```python
 appid = ''  #百度翻译APPid
