@@ -4,11 +4,12 @@ import requests
 import re
 import time
 import smtplib
-import smtplib
-from email.mime.text import MIMEText
+import smtplib  # 发邮件的模块
+from email.mime.text import MIMEText  # 定义邮件内容
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
+from email.mime.application import MIMEApplication  #用于添加附件
+#import logging
 import datetime
 from email import encoders
 import base64
@@ -16,6 +17,8 @@ import random
 import json
 from hashlib import md5
 from bs4 import BeautifulSoup
+import urllib3
+import sqlite3
 
 
 class CVE(object):
@@ -24,12 +27,15 @@ class CVE(object):
         self.open=open("CVE.html","w+")
         self.sum = 0
         self.WiH = ['CRITICAL','HIGH','MEDIUM','LOW']
+        self.CuData = datetime.date.today()
+
+
     def cve_scan(self):
         url="https://cassandra.cerias.purdue.edu/CVE_changes/today.html"
         urlscan=requests.get(url,headers=self.headres,verify=False)
-        cve_re=re.compile(r"<A HREF = '(.+?)'>(.+?)</A>(.*)+?<br />")   #若只想爬今日上新的CVE去掉(.*)+?即可
+        cve_re=re.compile(r"<A HREF = '(.+?)'>(.+?)</A>(.*)+?<br />")
         re_cve=re.findall(cve_re,urlscan.text)
-        self.open.write('<!DOCTYPE html><html><meta charset="utf-8"><title>最新漏洞情报</title><head><style type="text/css">table.hovertable { font-family: verdana,arial,sans-serif; font-size:11px; color:#333333; border-width: 1px; border-color: #999999; border-collapse: collapse; display: flex; justify-content: center; /* 水平居中 */ align-items: center; /* 垂直居中 */ margin: 10px;} table.hovertable th { background-color:#e1e0f3; border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; width: 130px; } table.hovertable tr { background-color:#ebe7f0; } table.hovertable td { border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; text-align: center; } #Description{ width: 330px; }</style></head><body><table class="hovertable"><tr><th>漏洞编号</th><th id="Description">漏洞描述</th><th>漏洞评分</th><th>参考链接</th></tr>')
+        self.open.write('<!DOCTYPE html><html><meta charset="utf-8"><title>最新漏洞情报</title><head><style type="text/css">table.hovertable { font-family: verdana,arial,sans-serif; font-size:11px; color:#333333; border-width: 1px; border-color: #999999; border-collapse: collapse; display: flex; justify-content: center; /* 水平居中 */ align-items: center; /* 垂直居中 */ margin: 10px;} table.hovertable th { background-color:#e1e0f3; border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; width: 130px; } table.hovertable tr { background-color:#ebe7f0; } table.hovertable td { border-width: 1px; padding: 8px; border-style: solid; border-color: #a9c6c9; text-align: center; } #Description{ width: 330px; }</style></head><body><table class="hovertable"><tr><th>漏洞编号</th><th id="Description">漏洞描述</th><th>漏洞评分</th><th>漏洞类型</th><th>参考链接</th></tr>')
         for cve in re_cve:
             print ("CVE-"+cve[1])
             urlcve=requests.get(cve[0],headers=self.headres,verify=False)
@@ -54,19 +60,80 @@ class CVE(object):
                 else:
                     WeiHai = '低危'
             else:
-                WeiHai = '暂无评分'
-
+                WeiHai = 'N/A'
 
             for cvecve in cvere:
-                cvecve = BaiduTrans(cvecve)    #百度翻译，不想翻译直接将此行注释掉即可
+                cvecve = BaiduTrans(cvecve)    #百度翻译
                 #self.open.write("<style>a{text-decoration: none;}</style>CVE-ID：<a href="+cve[0]+" target='_blank'>CVE-"+cve[1]+"</a><p>描述："+cvecve+"</p></br>")
-                self.open.write("<tr onmouseover=\"this.style.backgroundColor=\'#ffff66\';\" onmouseout=\"this.style.backgroundColor=\'#ebe7f0\';\"><td>CVE-"+cve[1]+"</td><td>"+cvecve+"</td><td>"+WeiHai+"</td><td><a href="+cve[0]+" target=\'_blank\'>CVE-"+cve[1]+"</a></td></tr>")
+                self.open.write("<tr onmouseover=\"this.style.backgroundColor=\'#ffff66\';\" onmouseout=\"this.style.backgroundColor=\'#ebe7f0\';\"><td>CVE-"+cve[1]+"</td><td>"+cvecve+"</td><td>"+WeiHai+"</td><td>未定义</td><td><a href="+cve[0]+" target=\'_blank\'>CVE-"+cve[1]+"</a></td></tr>")
                 self.open.flush()
                 self.sum+=1
+                DataStorage("CVE","CVE-"+cve[1],cvecve,my_div.text,"N/A",self.CuData,cve[0])
                 print(cvecve)
+        #self.open.write("</table></body></html>")
+
+
+    def AliVul_scan(self):
+        url = "https://avd.aliyun.com/nvd/list?page=1"
+        urlscan = requests.get(url, headers=self.headres, verify=False)
+        recve = re.compile(
+            '<tr>.*?target="_blank">(.*?)</a></td>.*?<td>(.*?)</td>.*?<button.*?>(.*?)</button>.*?nowrap="nowrap">(.*?)</td>' +
+            '.*?<button.*?>(.*?)</button>.*?</tr>', re.DOTALL)
+        contents = re.findall(recve, urlscan.text)
+        # print(contents)
+        for content in contents:
+            """yield {
+                'cve_id': content[0].strip(),
+                'vul_name': content[1],
+                'cul_type': content[2].strip(),
+                'cve_date': content[-2].strip(),
+                'cvs_level': content[-1].strip()
+            }"""
+            date_str = content[-2].strip()
+            date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+            if date.date() == self.CuData:
+                self.open.write(
+                    "<tr onmouseover=\"this.style.backgroundColor=\'#ffff66\';\" onmouseout=\"this.style.backgroundColor=\'#ebe7f0\';\"><td>" +
+                    content[0].strip() + "</td><td>" + content[1] + "</td><td>" + content[-1].strip() + "</td><td>" + content[2].strip() + "</td><td><a href=https://avd.aliyun.com/nvd/list target=\'_blank\'>搜索CVE编号获取更多漏洞信息</a></td></tr>")
+                self.open.flush()
+                self.sum += 1
+                link = 'https://avd.aliyun.com/nvd/list'
+                DataStorage("AliCVE", content[0].strip(), content[1], content[-1].strip(), content[2].strip(), content[-2].strip(), link)
+                print(content[1])
+
+        url = "https://avd.aliyun.com/nonvd/list?page=1"
+        urlscan = requests.get(url, headers=self.headres, verify=False)
+        recve = re.compile(
+            '<tr>.*?target="_blank">(.*?)</a></td>.*?<td>(.*?)</td>.*?<button.*?>(.*?)</button>.*?nowrap="nowrap">(.*?)</td>' +
+            '.*?<button.*?>(.*?)</button>.*?</tr>', re.DOTALL)
+        contents = re.findall(recve, urlscan.text)
+        # print(contents)
+        for content in contents:
+            """yield {
+                'cve_id': content[0].strip(),
+                'vul_name': content[1],
+                'cul_type': content[2].strip(),
+                'cve_date': content[-2].strip(),
+                'cvs_level': content[-1].strip()
+            }"""
+            date_str = content[-2].strip()
+            date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+            if date.date() == self.CuData:
+                self.open.write(
+                    "<tr onmouseover=\"this.style.backgroundColor=\'#ffff66\';\" onmouseout=\"this.style.backgroundColor=\'#ebe7f0\';\"><td>" +
+                    content[0].strip() + "</td><td>" + content[1] + "</td><td>" + content[-1].strip() + "</td><td>" +
+                    content[
+                        2].strip() + "</td><td><a href=https://avd.aliyun.com/nonvd/list?page=1 target=\'_blank\'>搜索AVD编号获取更多漏洞信息</a></td></tr>")
+                self.open.flush()
+                self.sum += 1
+                link = 'https://avd.aliyun.com/nonvd/list'
+                DataStorage("AVD", content[0].strip(), content[1], content[-1].strip(), content[2].strip(), content[-2].strip(), link)
+                print(content[1])
         self.open.write("</table></body></html>")
+
+
     def email(self):
-        mail_content = "<div>最新CVE漏洞情报</div>"
+        mail_content = "<div>最新漏洞情报</div>"
         # 发送邮箱服务器
         smtp_server = 'smtp.exmail.qq.com'
 
@@ -78,7 +145,7 @@ class CVE(object):
         sender = ''
 
         # 用户甲，用户乙...
-        receives = ['','','']
+        receives = ['','']
         subject = "最新漏洞预警【今日份新增"+str(self.sum)+"个漏洞】"
         f_f=open("CVE.html",'r+')
         f_ff=f_f.read()
@@ -119,8 +186,9 @@ class CVE(object):
 
 
 def BaiduTrans(cvecve):
-    appid = ''  #百度翻译APPid
-    appkey = '' #百度翻译appkey
+    appid = ''
+    appkey = ''
+    # For list of language codes, please refer to `https://api.fanyi.baidu.com/doc/21`
     from_lang = 'en'
     to_lang = 'zh'
     endpoint = 'http://api.fanyi.baidu.com'
@@ -129,19 +197,53 @@ def BaiduTrans(cvecve):
     query = cvecve
     salt = random.randint(32768, 65536)
     sign = make_md5(appid + query + str(salt) + appkey)
+    # Build request
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     payload = {'appid': appid, 'q': query, 'from': from_lang, 'to': to_lang, 'salt': salt, 'sign': sign}
+    # Send request
     r = requests.post(url, params=payload, headers=headers)
     result = r.json()
+    # Show response
     print(json.dumps(result, indent=4, ensure_ascii=False))
+    # Extract and print the 'dst' translation result
     cvecve = result['trans_result'][0]['dst']
     return cvecve
 
 def make_md5(s, encoding='utf-8'):
     return md5(s.encode(encoding)).hexdigest()
 
+#数据库存储
+def DataStorage(Tab,ID,Dic,level,type,CuData,link):
+    # 连接到SQLite数据库（如果不存在则创建）
+    conn = sqlite3.connect('Vuln.db')
+    # 创建一个游标对象
+    cur = conn.cursor()
+    # 检查表是否存在
+    def check_table(table_name):
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+        if cursor.fetchone() is None:
+            return False
+        return True
+        # 定义要存储的数据
+    data = [(ID, Dic, level, type, CuData, link)]
+    # 检查并创建表
+    if not check_table(Tab):
+        qurey = "CREATE TABLE " + Tab + "(ID TEXT, DIC TEXT, level FLOAT, type TEXT, CuData TEXT, link TEXT)"
+        cur.execute(qurey)
+
+        # 插入数据到表中
+
+    cur.executemany("INSERT INTO "+ Tab +"(ID, DIC, level, type, CuData, link) VALUES (?, ?, ?, ?, ?, ?)", data)
+    # 提交事务
+    conn.commit()
+    # 关闭连接
+    conn.close()
+
 
 if __name__ == '__main__':
+    urllib3.disable_warnings()
     CVESCAN=CVE()
     CVESCAN.cve_scan()
+    CVESCAN.AliVul_scan()
     CVESCAN.email()
