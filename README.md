@@ -64,10 +64,3 @@ $ crontab -e    #进入编辑界面
 输入一下数据
 0 9 * * * python /path/CveMonitor    #确保将/path/CveMonitor替换为脚本的绝对路径
 ```
-
-## 结果图
-
-![image-20231229160930286](https://github.com/h18192h/CveMonitor/assets/83074322/e5104432-8267-451d-a771-22acbd0f5ec6)
-![image-20231229161100521](https://github.com/h18192h/CveMonitor/assets/83074322/905b2019-3305-4dc4-89c0-4af802ef4150)
-![image-20231229161238818](https://github.com/h18192h/CveMonitor/assets/83074322/0dbedd7b-b4ac-4560-9a43-9134bea1ab70)
-![image-20231229161306930](https://github.com/h18192h/CveMonitor/assets/83074322/5b3e3651-a995-4504-86b3-30ae0ab27cdf)
